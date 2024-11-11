@@ -1,0 +1,140 @@
+name: Update
+on:
+  schedule:
+    - cron: "4 23 * * 0"
+  push:
+    branches:
+      - main
+
+jobs:
+  Update:
+    name: Update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+        with:
+         token: '${{ github.token }}'
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
+
+      - name: Update
+        run: |
+          rm -fr * .git .github
+          v2rayn_version=$(curl -sL https://data.jsdelivr.com/v1/package/gh/2dust/v2rayN | jq -r .versions[0])
+          wget -qO ./v2rayN-With-Core.zip https://github.com/2dust/v2rayN/releases/download/$v2rayn_version/v2rayN-windows-64-With-Core.zip
+          check_sha256=$(sha256sum ./v2rayN-With-Core.zip | cut -d " " -f1 )
+          echo v2rayN $check_sha256
+          echo ====================
+
+          rm -f ./v2rayN-With-Core.zip
+
+          mkdir -p ./v2rayN/tools
+          
+          
+          #chocolateybeforemodify.ps1
+          cat <<EOF > ./v2rayN/tools/chocolateybeforemodify.ps1
+          \$ErrorActionPreference = 'Stop'
+          Get-Process -Name 'v2rayN' -ErrorAction SilentlyContinue | Stop-Process
+          Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\' -Name 'ProxyEnable' -Value 0
+          EOF
+          cat ./v2rayN/tools/chocolateybeforemodify.ps1
+
+
+          #chocolateyinstall.ps1
+
+          cat <<EOF > ./v2rayN/tools/chocolateyinstall.ps1
+          \$ErrorActionPreference = 'Stop'
+
+          if (Test-Connection -ComputerName google.com -Quiet -Count 1) {
+              \$url_dl = 'https://github.com/2dust/v2rayN/releases/download/$v2rayn_version/v2rayN-windows-64-With-Core.zip'
+          }
+          else {
+              \$url_dl = 'https://mirror.ghproxy.com/https://github.com/2dust/v2rayN/releases/download/$v2rayn_version/v2rayN-windows-64-With-Core.zip'
+          }
+
+
+          \$sha256 = "$check_sha256"
+
+          \$DesktopPath = [Environment]::GetFolderPath("Desktop")
+
+          \$packageArgs = @{
+              packageName   = \$env:ChocolateyPackageName
+              unzipLocation  = "\$(Get-ToolsLocation)\\\$env:ChocolateyPackageName"
+              url64bit      = \$url_dl
+              checksum64    = \$sha256
+              checksumType  = 'SHA256'
+          }
+
+          Install-ChocolateyZipPackage @packageArgs
+          Install-ChocolateyShortcut -ShortcutFilePath "\$DesktopPath\v2rayN.lnk" -TargetPath "\$(Get-ToolsLocation)\\\$env:ChocolateyPackageName\v2rayN-With-Core\v2rayN.exe" -RunAsAdmin -PinToTaskbar
+          EOF
+
+          cat ./v2rayN/tools/chocolateyinstall.ps1
+
+          #chocolateyUninstall.ps1
+          cat <<EOF > ./v2rayN/tools/chocolateyUninstall.ps1
+          \$ErrorActionPreference = 'Stop'
+          \$DesktopPath = [Environment]::GetFolderPath("Desktop")
+          Remove-Item -Recurse "\$(Get-ToolsLocation)\\\$env:ChocolateyPackageName"  -Force
+          Remove-Item "\$DesktopPath\v2rayN.lnk"
+          EOF
+
+          cat ./v2rayN/tools/chocolateyUninstall.ps1
+
+          #2rayn.nuspec
+          cat <<EOF > ./v2rayN/v2rayn.nuspec
+          <?xml version="1.0"?>
+          <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+            <metadata>
+              <id>v2rayn</id>
+              <version>$v2rayn_version</version>
+              <owners>Mainians</owners>
+              <title>v2rayN</title>
+              <authors>v2rayN Authors</authors>
+              <licenseUrl>https://raw.githubusercontent.com/2dust/v2rayN/master/LICENSE</licenseUrl>
+              <projectUrl>https://github.com/2dust/v2rayN</projectUrl>
+              <iconUrl>https://cdn.jsdelivr.net/gh/2dust/v2rayN@master/v2rayN/v2rayN/v2rayN.ico</iconUrl>
+              <requireLicenseAcceptance>false</requireLicenseAcceptance>
+              <description>V2RayN,v2ray user-friendly GUI client on windows!</description>
+              <summary> v2rayN supports trojan,vless,v2ray,socks,http proxy on windows with user-friendly GUI client!</summary>
+              <releaseNotes>https://github.com/2dust/v2rayN/releases</releaseNotes>
+              <tags>v2ray xray v2fly v2rayN trojan</tags>
+              <projectSourceUrl>https://github.com/2dust/v2rayN</projectSourceUrl>
+              <docsUrl>https://github.com/2dust/v2rayN/wiki</docsUrl>
+              <bugTrackerUrl>https://github.com/2dust/v2rayN/issues</bugTrackerUrl>
+              <packageSourceUrl>https://github.com/mainians/Choco-v2rayN</packageSourceUrl>
+            </metadata>
+          </package>
+          EOF
+
+          cat ./v2rayN/v2rayn.nuspec
+
+          mkdir -p .github/workflows
+          wget -qO .github/workflows/update.yaml https://github.com/${{ github.repository }}/raw/main/.github/workflows/update.yaml
+
+          git config --global init.defaultBranch main
+          git init
+          git add .
+          git config user.name "mainians"
+          git config user.email "61817665+mainians@users.noreply.github.com"
+          git commit -m "$v2rayn_version"
+          git remote add release "https://${{github.actor}}:${{secrets.GITHUB_TOKEN}}@github.com/${{github.repository}}"
+          git push -u release main -f
+  Cpack:
+    name: Cpack
+    needs: Update
+    runs-on: windows-latest
+    steps:
+      - name: Cpack
+        run: |
+          git clone https://github.com/${{github.repository}} v2rayN
+          cd v2rayN/v2rayN
+          choco apikey --key ${{secrets.api_key}} --source https://push.chocolatey.org/
+          choco pack
+          choco push --source https://push.chocolatey.org/ || true

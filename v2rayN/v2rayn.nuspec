@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>v2rayn</id>
+    <version>7.0.9</version>
+    <owners>Mainians</owners>
+    <title>v2rayN</title>
+    <authors>v2rayN Authors</authors>
+    <licenseUrl>https://raw.githubusercontent.com/2dust/v2rayN/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/2dust/v2rayN</projectUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/2dust/v2rayN@master/v2rayN/v2rayN/v2rayN.ico</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>V2RayN,v2ray user-friendly GUI client on windows!</description>
+    <summary> v2rayN supports trojan,vless,v2ray,socks,http proxy on windows with user-friendly GUI client!</summary>
+    <releaseNotes>https://github.com/2dust/v2rayN/releases</releaseNotes>
+    <tags>v2ray xray v2fly v2rayN trojan</tags>
+    <projectSourceUrl>https://github.com/2dust/v2rayN</projectSourceUrl>
+    <docsUrl>https://github.com/2dust/v2rayN/wiki</docsUrl>
+    <bugTrackerUrl>https://github.com/2dust/v2rayN/issues</bugTrackerUrl>
+    <packageSourceUrl>https://github.com/mainians/Choco-v2rayN</packageSourceUrl>
+  </metadata>
+</package>
